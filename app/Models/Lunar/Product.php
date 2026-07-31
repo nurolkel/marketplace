@@ -6,11 +6,27 @@ use App\Models\Restaurant;
 use Database\Factories\Lunar\ProductFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
+use Lunar\Models\Brand;
 use Lunar\Models\Product as LunarProduct;
+use Lunar\Models\ProductType;
+use Lunar\Models\ProductVariant;
 
 /**
+ * @property int $id
+ * @property int $product_type_id
+ * @property string $status
+ * @property Collection<string, mixed>|null $attribute_data
+ * @property int|null $brand_id
  * @property int|null $restaurant_id
- * @property Restaurant|null $restaurant
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property Carbon|null $deleted_at
+ * @property-read Restaurant|null $restaurant
+ * @property-read ProductType $productType
+ * @property-read Brand|null $brand
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, ProductVariant> $variants
  */
 class Product extends LunarProduct
 {

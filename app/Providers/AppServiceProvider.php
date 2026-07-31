@@ -35,6 +35,10 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->configureDefaults();
 
+        Gate::before(fn ($user): ?bool => $user instanceof \App\Models\User && $user->isMarketplaceAdmin()
+            ? true
+            : null);
+
         Gate::policy(Restaurant::class, RestaurantPolicy::class);
         Gate::policy(Product::class, ProductPolicy::class);
     }

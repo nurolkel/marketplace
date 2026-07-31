@@ -7,11 +7,13 @@ use App\Enums\RestaurantStatus;
 use App\Models\Lunar\Product;
 use Database\Factories\RestaurantFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
@@ -19,6 +21,13 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property string $slug
  * @property string|null $description
  * @property RestaurantStatus $status
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property Carbon|null $deleted_at
+ * @property-read Collection<int, User> $members
+ * @property-read Collection<int, User> $owners
+ * @property-read Collection<int, User> $staff
+ * @property-read Collection<int, Product> $products
  */
 #[Fillable(['name', 'slug', 'description', 'status'])]
 class Restaurant extends Model
