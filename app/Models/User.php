@@ -5,6 +5,7 @@ namespace App\Models;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use App\Enums\RestaurantRole;
 use App\Enums\UserType;
+use App\Models\Lunar\Customer;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -34,6 +35,7 @@ use Laravel\Passkeys\Passkey;
  * @property Carbon|null $updated_at
  * @property-read Collection<int, Restaurant> $restaurants
  * @property-read Collection<int, Passkey> $passkeys
+ * @property-read Collection<int, Customer> $lunarCustomer
  */
 #[Fillable(['name', 'email', 'password'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
@@ -66,6 +68,17 @@ class User extends Authenticatable implements PasskeyUser
     {
         return $this->belongsToMany(Restaurant::class)
             ->withPivot('role')
+            ->withTimestamps();
+    }
+
+    /**
+     * The user's storefront customer record, linked on registration.
+     *
+     * @return BelongsToMany<Customer, $this>
+     */
+    public function lunarCustomer(): BelongsToMany
+    {
+        return $this->belongsToMany(Customer::class, 'lunar_customer_user')
             ->withTimestamps();
     }
 
