@@ -38,4 +38,16 @@ enum RestaurantRole: string
             self::Staff => false,
         };
     }
+
+    /**
+     * Whether the role may manage sub-orders: transitions, pauses,
+     * cancellations, and refunds. All roles may for now; tightening
+     * to owner/manager later only changes this one method.
+     */
+    public function canManageOrders(): bool
+    {
+        return match ($this) {
+            self::Owner, self::Manager, self::Staff => true,
+        };
+    }
 }

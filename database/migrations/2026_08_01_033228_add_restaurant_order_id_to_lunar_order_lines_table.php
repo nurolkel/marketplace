@@ -12,7 +12,10 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('lunar_order_lines', function (Blueprint $table) {
-            //
+            $table->foreignId('restaurant_order_id')
+                ->nullable()
+                ->constrained('restaurant_orders')
+                ->nullOnDelete();
         });
     }
 
@@ -22,7 +25,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('lunar_order_lines', function (Blueprint $table) {
-            //
+            $table->dropConstrainedForeignId('restaurant_order_id');
         });
     }
 };

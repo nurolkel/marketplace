@@ -29,6 +29,7 @@ use Laravel\Scout\Searchable;
  * @property-read Collection<int, User> $owners
  * @property-read Collection<int, User> $staff
  * @property-read Collection<int, Product> $products
+ * @property-read Collection<int, RestaurantOrder> $restaurantOrders
  */
 #[Fillable(['name', 'slug', 'description', 'status'])]
 class Restaurant extends Model
@@ -117,5 +118,15 @@ class Restaurant extends Model
     public function shouldBeSearchable(): bool
     {
         return $this->status === RestaurantStatus::Active;
+    }
+
+    /**
+     * Sub-orders this restaurant is responsible for fulfilling.
+     *
+     * @return HasMany<RestaurantOrder, $this>
+     */
+    public function restaurantOrders(): HasMany
+    {
+        return $this->hasMany(RestaurantOrder::class);
     }
 }
