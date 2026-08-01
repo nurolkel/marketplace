@@ -29,6 +29,7 @@ use Laravel\Scout\Searchable;
  * @property-read Collection<int, User> $owners
  * @property-read Collection<int, User> $staff
  * @property-read Collection<int, Product> $products
+ * @property-read Collection<int, Category> $categories
  */
 #[Fillable(['name', 'slug', 'description', 'status'])]
 class Restaurant extends Model
@@ -97,7 +98,20 @@ class Restaurant extends Model
     }
 
     /**
+     * Categories from the platform taxonomy this restaurant is tagged
+     * with (e.g. a restaurant can be both "Italian" and "Pizzeria").
+     *
+     * @return BelongsToMany<Category, $this>
+     */
+    public function categories(): BelongsToMany
+    {
+        return $this->belongsToMany(Category::class)->withTimestamps();
+    }
+
+    /**
      * The fields matched when customers search the marketplace.
+     * Category names are included so searching a cuisine
+     * ("pizzeria") finds categorized restaurants.
      *
      * @return array<string, string>
      */
@@ -108,6 +122,7 @@ class Restaurant extends Model
             'name' => $this->name,
             'slug' => $this->slug,
             'description' => (string) $this->description,
+            'categories' => $this->categories->pluck('name')->implode(' '),
         ];
     }
 

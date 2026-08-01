@@ -77,9 +77,10 @@ class Product extends LunarProduct
 
     /**
      * Deterministic search payload, independent of Lunar's attribute
-     * manifest metadata.
+     * manifest metadata. The restaurant id is included so engines can
+     * filter a search down to one restaurant's menu.
      *
-     * @return array<string, string>
+     * @return array<string, string|int|null>
      */
     public function toSearchableArray(): array
     {
@@ -88,6 +89,7 @@ class Product extends LunarProduct
             'name' => (string) $this->displayName(),
             'description' => (string) $this->translateAttribute('description'),
             'restaurant' => (string) $this->restaurant?->name,
+            'restaurant_id' => $this->restaurant_id,
         ];
     }
 }

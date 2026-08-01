@@ -33,4 +33,13 @@ class RestaurantPolicy
     {
         return $user->isStaffOf($restaurant);
     }
+
+    /**
+     * Determine whether the user can attach or detach categories on
+     * the restaurant. Owners and managers only, same rule as update.
+     */
+    public function manageCategories(User $user, Restaurant $restaurant): bool
+    {
+        return $user->roleInRestaurant($restaurant)?->canManageRestaurant() ?? false;
+    }
 }
