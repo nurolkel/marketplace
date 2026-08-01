@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
+use Laravel\Scout\Searchable;
 
 /**
  * @property int $id
@@ -28,12 +29,13 @@ use Illuminate\Support\Carbon;
  * @property-read Collection<int, User> $owners
  * @property-read Collection<int, User> $staff
  * @property-read Collection<int, Product> $products
+ * @property-read Collection<int, RestaurantOrder> $restaurantOrders
  */
 #[Fillable(['name', 'slug', 'description', 'status'])]
 class Restaurant extends Model
 {
     /** @use HasFactory<RestaurantFactory> */
-    use HasFactory, SoftDeletes;
+    use HasFactory, Searchable, SoftDeletes;
 
     /**
      * Get the attributes that should be cast.
@@ -93,5 +95,38 @@ class Restaurant extends Model
     public function products(): HasMany
     {
         return $this->hasMany(Product::class);
+    }
+
+    /**
+     * The fields matched when customers search the marketplace.
+     *
+     * @return array<string, string>
+     */
+    public function toSearchableArray(): array
+    {
+        return [
+            'id' => (string) $this->id,
+            'name' => $this->name,
+            'slug' => $this->slug,
+            'description' => (string) $this->description,
+        ];
+    }
+
+    /**
+     * Only active restaurants appear in storefront search results.
+     */
+    public function shouldBeSearchable(): bool
+    {
+        return $this->status === RestaurantStatus::Active;
+    }
+
+    /**
+     * Sub-orders this restaurant is responsible for fulfilling.
+     *
+     * @return HasMany<RestaurantOrder, $this>
+     */
+    public function restaurantOrders(): HasMany
+    {
+        return $this->hasMany(RestaurantOrder::class);
     }
 }

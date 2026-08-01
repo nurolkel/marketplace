@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\Orders\SplitOrderIntoRestaurantOrdersAction;
 use Lunar\Base\OrderReferenceGenerator;
 use Lunar\Pipelines\Order\Creation\CleanUpOrderLines;
 use Lunar\Pipelines\Order\Creation\CreateOrderAddresses;
@@ -121,6 +122,7 @@ return [
             CreateShippingLine::class,
             CleanUpOrderLines::class,
             MapDiscountBreakdown::class,
+            SplitOrderIntoRestaurantOrdersAction::class,
         ],
     ],
 

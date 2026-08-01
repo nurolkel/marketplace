@@ -3,51 +3,42 @@
 namespace App\Models\Lunar;
 
 use App\Models\Restaurant;
-use Database\Factories\Lunar\ProductFactory;
+use Database\Factories\Lunar\CollectionFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Collection;
-use Lunar\Models\Brand;
-use Lunar\Models\Product as LunarProduct;
-use Lunar\Models\ProductType;
-use Lunar\Models\ProductVariant;
+use Lunar\Models\Collection as LunarCollection;
+use Lunar\Models\CollectionGroup;
 
 /**
+ * A product category. Lunar calls categories "collections".
+ *
  * @property int $id
- * @property int $product_type_id
- * @property string $status
- * @property Collection<string, mixed>|null $attribute_data
- * @property int|null $brand_id
+ * @property int $collection_group_id
+ * @property string $type
+ * @property \Illuminate\Support\Collection<string, mixed>|null $attribute_data
+ * @property string $sort
  * @property int|null $restaurant_id
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property Carbon|null $deleted_at
  * @property-read Restaurant|null $restaurant
- * @property-read ProductType $productType
- * @property-read Brand|null $brand
- * @property-read \Illuminate\Database\Eloquent\Collection<int, ProductVariant> $variants
+ * @property-read CollectionGroup $group
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, Product> $products
  */
-class Product extends LunarProduct
+class Collection extends LunarCollection
 {
-    public function __construct(array $attributes = [])
-    {
-        $this->mergeFillable(['restaurant_id']);
-
-        parent::__construct($attributes);
-    }
-
     /**
      * Return a new factory instance for the model.
      */
-    protected static function newFactory(): ProductFactory
+    protected static function newFactory(): CollectionFactory
     {
-        return ProductFactory::new();
+        return CollectionFactory::new();
     }
 
     /**
-     * The restaurant that owns this product. Null means the item is
-     * owned by the marketplace itself.
+     * The restaurant that owns this category. Null means it is a
+     * marketplace-wide category managed by the platform.
      *
      * @return BelongsTo<Restaurant, $this>
      */
@@ -57,10 +48,10 @@ class Product extends LunarProduct
     }
 
     /**
-     * Scope the query to products owned by the given restaurant.
+     * Scope the query to categories owned by the given restaurant.
      *
-     * @param  Builder<Product>  $query
-     * @return Builder<Product>
+     * @param  Builder<Collection>  $query
+     * @return Builder<Collection>
      */
     public function scopeForRestaurant(Builder $query, Restaurant $restaurant): Builder
     {
@@ -68,7 +59,7 @@ class Product extends LunarProduct
     }
 
     /**
-     * The product's display name from its attribute data.
+     * The category's display name from its attribute data.
      */
     public function displayName(): ?string
     {
@@ -86,8 +77,6 @@ class Product extends LunarProduct
         return [
             'id' => (string) $this->id,
             'name' => (string) $this->displayName(),
-            'description' => (string) $this->translateAttribute('description'),
-            'restaurant' => (string) $this->restaurant?->name,
         ];
     }
 }
