@@ -22,10 +22,11 @@ class RefundRestaurantOrderAction
 {
     /**
      * Refund a sub-order in full or in part through Lunar's payment
-     * abstraction (offline driver today; a real gateway slots into the
-     * same call). Records a refund transaction on the parent order
-     * linked to the sub-order via meta, then flips the sub-order to
-     * Refunded or PartiallyRefunded.
+     * abstraction, using the driver that captured the payment (Stripe
+     * for card payments, offline for cash-in-hand). Records a refund
+     * transaction on the parent order linked to the sub-order via
+     * meta — claiming the gateway's own record when it created one —
+     * then flips the sub-order to Refunded or PartiallyRefunded.
      *
      * @param  int|null  $amount  Amount in cents; null refunds the remaining refundable balance
      *
@@ -66,7 +67,9 @@ class RefundRestaurantOrderAction
         throw_if($capture === null, PaymentNotCapturedException::forOrder());
 
         /** @var PaymentTypeInterface $driver */
-        $driver = Payments::driver();
+        $driver = Payments::driver($capture->driver);
+
+        $lastRefundId = (int) $order->transactions()->where('type', 'refund')->max('id');
 
         $refund = $driver->order($order)->refund(
             $capture,
@@ -78,20 +81,36 @@ class RefundRestaurantOrderAction
 
         $to = $amount === $remaining ? RestaurantOrderStatus::Refunded : RestaurantOrderStatus::PartiallyRefunded;
 
-        DB::transaction(function () use ($order, $capture, $amount, $notes, $restaurantOrder, $to): void {
-            $order->transactions()->create([
-                'parent_transaction_id' => $capture->id,
-                'success' => true,
-                'type' => 'refund',
-                'driver' => $capture->driver,
-                'amount' => $amount,
-                'reference' => 'RFD-'.Str::upper(Str::random(10)),
-                'status' => 'settled',
-                'notes' => $notes,
-                'card_type' => $capture->card_type,
-                'last_four' => $capture->last_four,
-                'meta' => ['restaurant_order_id' => $restaurantOrder->id],
-            ]);
+        DB::transaction(function () use ($order, $capture, $amount, $notes, $restaurantOrder, $to, $lastRefundId): void {
+            $recorded = $order->transactions()
+                ->where('type', 'refund')
+                ->where('id', '>', $lastRefundId)
+                ->latest('id')
+                ->first();
+
+            if ($recorded) {
+                // Gateways like Stripe record their own refund
+                // transaction; claim it for this sub-order instead
+                // of recording a duplicate.
+                $recorded->update([
+                    'parent_transaction_id' => $capture->id,
+                    'meta' => ['restaurant_order_id' => $restaurantOrder->id],
+                ]);
+            } else {
+                $order->transactions()->create([
+                    'parent_transaction_id' => $capture->id,
+                    'success' => true,
+                    'type' => 'refund',
+                    'driver' => $capture->driver,
+                    'amount' => $amount,
+                    'reference' => 'RFD-'.Str::upper(Str::random(10)),
+                    'status' => 'settled',
+                    'notes' => $notes,
+                    'card_type' => $capture->card_type,
+                    'last_four' => $capture->last_four,
+                    'meta' => ['restaurant_order_id' => $restaurantOrder->id],
+                ]);
+            }
 
             $restaurantOrder->update(['status' => $to]);
         });

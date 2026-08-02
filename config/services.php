@@ -30,8 +30,20 @@ return [
 
     'slack' => [
         'notifications' => [
-            'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),
+            'bot_user_oauth_token' => env('SLACK_BOT_OAUTH_TOKEN'),
             'channel' => env('SLACK_BOT_USER_DEFAULT_CHANNEL'),
+        ],
+    ],
+
+    'stripe' => [
+        'key' => env('STRIPE_SECRET'),
+        'public_key' => env('STRIPE_PK'),
+        'webhooks' => [
+            'lunar' => env('STRIPE_WEBHOOK_SECRET'),
+        ],
+        'checkout' => [
+            'success_url' => env('STRIPE_CHECKOUT_SUCCESS_URL', env('APP_URL').'/checkout/return?session_id={CHECKOUT_SESSION_ID}'),
+            'cancel_url' => env('STRIPE_CHECKOUT_CANCEL_URL', env('APP_URL').'/checkout/cancel'),
         ],
     ],
 

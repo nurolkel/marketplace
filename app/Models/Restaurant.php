@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -22,6 +23,8 @@ use Laravel\Scout\Searchable;
  * @property string $slug
  * @property string|null $description
  * @property RestaurantStatus $status
+ * @property int|null $commission_tier_id
+ * @property int|null $commission_rate
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property Carbon|null $deleted_at
@@ -29,8 +32,10 @@ use Laravel\Scout\Searchable;
  * @property-read Collection<int, User> $owners
  * @property-read Collection<int, User> $staff
  * @property-read Collection<int, Product> $products
+ * @property-read CommissionTier|null $commissionTier
  * @property-read Collection<int, Category> $categories
  * @property-read Collection<int, RestaurantOrder> $restaurantOrders
+ * @property-read Collection<int, RestaurantPayout> $payouts
  */
 #[Fillable(['name', 'slug', 'description', 'status'])]
 class Restaurant extends Model
@@ -143,5 +148,53 @@ class Restaurant extends Model
     public function restaurantOrders(): HasMany
     {
         return $this->hasMany(RestaurantOrder::class);
+    }
+
+    /**
+     * Payout ledger entries owed to this restaurant.
+     *
+     * @return HasMany<RestaurantPayout, $this>
+     */
+    public function payouts(): HasMany
+    {
+        return $this->hasMany(RestaurantPayout::class);
+    }
+
+    /**
+     * The restaurant's rung on the commission scale. Null means the
+     * platform's default tier applies.
+     *
+     * @return BelongsTo<CommissionTier, $this>
+     */
+    public function commissionTier(): BelongsTo
+    {
+        return $this->belongsTo(CommissionTier::class);
+    }
+
+    /**
+     * The commission charged on this restaurant's fulfilled
+     * sub-orders, in basis points: a custom override when set,
+     * otherwise the rate of the restaurant's tier (the platform
+     * standard by default).
+     */
+    public function effectiveCommissionRate(): int
+    {
+        if ($this->commission_rate !== null) {
+            return $this->commission_rate;
+        }
+
+        /** @var CommissionTier|null $tier */
+        $tier = $this->commissionTier()->first();
+
+        if ($tier instanceof CommissionTier) {
+            return $tier->rate;
+        }
+
+        /** @var CommissionTier|null $defaultTier */
+        $defaultTier = CommissionTier::query()->where('is_default', true)->first();
+
+        return $defaultTier instanceof CommissionTier
+            ? $defaultTier->rate
+            : CommissionTier::FALLBACK_RATE;
     }
 }

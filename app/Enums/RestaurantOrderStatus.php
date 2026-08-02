@@ -51,12 +51,12 @@ enum RestaurantOrderStatus: string
     }
 
     /**
-     * Customers may cancel only until the restaurant starts preparing.
+     * Customers may cancel any time before the order is sent out.
      */
     public function canBeCancelledByCustomer(): bool
     {
         return match ($this) {
-            self::Pending, self::PaymentReceived, self::Accepted => true,
+            self::Pending, self::PaymentReceived, self::Accepted, self::Preparing, self::OnHold => true,
             default => false,
         };
     }

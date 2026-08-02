@@ -1,0 +1,31 @@
+version: '3'
+
+tasks:
+  lint:
+    desc: Check code style with Pint (report only, no changes)
+    cmds:
+      - vendor/bin/pint --parallel --test
+
+  lint:fix:
+    desc: Fix code style with Pint
+    cmds:
+      - vendor/bin/pint --parallel
+
+  phpstan:
+    desc: Run PHPStan static analysis
+    cmds:
+      - vendor/bin/phpstan analyse --memory-limit=1G
+
+  check:
+    desc: Run the lint check and PHPStan together
+    deps: [lint, phpstan]
+
+  test:
+    desc: Run the full Pest test suite
+    cmds:
+      - php artisan test --compact
+
+  dev:
+    desc: Run the application (server, queue, logs, vite)
+    cmds:
+      - composer run dev

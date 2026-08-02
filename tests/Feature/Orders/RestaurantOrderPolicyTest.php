@@ -70,14 +70,14 @@ test('manage abilities are open to every staff role and admins only', function (
     'refund admin' => ['refund', 'admin', true],
 ]);
 
-test('the customer cancel window closes once preparation starts', function (RestaurantOrderStatus $status, bool $expected) {
+test('the customer cancel window stays open until dispatch', function (RestaurantOrderStatus $status, bool $expected) {
     expect($this->customer->can('cancel', ($this->makeSubOrder)($status)))->toBe($expected);
 })->with([
     'pending' => [RestaurantOrderStatus::Pending, true],
     'payment received' => [RestaurantOrderStatus::PaymentReceived, true],
     'accepted' => [RestaurantOrderStatus::Accepted, true],
-    'preparing' => [RestaurantOrderStatus::Preparing, false],
-    'on hold' => [RestaurantOrderStatus::OnHold, false],
+    'preparing' => [RestaurantOrderStatus::Preparing, true],
+    'on hold' => [RestaurantOrderStatus::OnHold, true],
     'dispatched' => [RestaurantOrderStatus::Dispatched, false],
     'completed' => [RestaurantOrderStatus::Completed, false],
 ]);

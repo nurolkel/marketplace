@@ -14,6 +14,7 @@ use App\Policies\CustomerPolicy;
 use App\Policies\ProductPolicy;
 use App\Policies\RestaurantOrderPolicy;
 use App\Policies\RestaurantPolicy;
+use App\Shipping\FlatRateShippingModifier;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
@@ -21,11 +22,13 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 use Lunar\Admin\Support\Facades\LunarPanel;
+use Lunar\Base\ShippingModifiers;
 use Lunar\Facades\ModelManifest;
 use Lunar\Models\Contracts\Collection as CollectionContract;
 use Lunar\Models\Contracts\Customer as CustomerContract;
 use Lunar\Models\Contracts\Order as OrderContract;
 use Lunar\Models\Contracts\Product as ProductContract;
+use Stripe\StripeClient;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -35,6 +38,10 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         LunarPanel::register();
+
+        $this->app->bind(StripeClient::class, fn (): StripeClient => new StripeClient([
+            'api_key' => config('services.stripe.key'),
+        ]));
 
         ModelManifest::replace(ProductContract::class, Product::class);
         ModelManifest::replace(CollectionContract::class, Collection::class);
@@ -58,6 +65,8 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Collection::class, CategoryPolicy::class);
         Gate::policy(Customer::class, CustomerPolicy::class);
         Gate::policy(RestaurantOrder::class, RestaurantOrderPolicy::class);
+
+        app(ShippingModifiers::class)->add(FlatRateShippingModifier::class);
     }
 
     /**

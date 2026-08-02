@@ -107,7 +107,7 @@ test('lunar products resolve to the app model and belong to a restaurant', funct
     $restaurant = Restaurant::factory()->create();
     $product = Product::factory()->create(['restaurant_id' => $restaurant->id]);
 
-    $resolved = \Lunar\Models\Product::query()->firstOrFail();
+    $resolved = Lunar\Models\Product::query()->firstOrFail();
 
     expect($resolved)->toBeInstanceOf(Product::class)
         ->and($product->restaurant->is($restaurant))->toBeTrue()

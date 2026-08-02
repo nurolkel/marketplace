@@ -42,4 +42,22 @@ class RestaurantPolicy
     {
         return $user->roleInRestaurant($restaurant)?->canManageRestaurant() ?? false;
     }
+
+    /**
+     * Whether the user can see the restaurant's commission tier and
+     * effective rate. Anyone who works at the restaurant.
+     */
+    public function viewCommission(User $user, Restaurant $restaurant): bool
+    {
+        return $user->isStaffOf($restaurant);
+    }
+
+    /**
+     * Only platform admins may change commission terms (they pass
+     * Gate::before); restaurant members never set their own rates.
+     */
+    public function manageCommission(User $user, Restaurant $restaurant): bool
+    {
+        return false;
+    }
 }

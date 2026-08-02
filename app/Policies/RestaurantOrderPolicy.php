@@ -37,9 +37,8 @@ class RestaurantOrderPolicy
     }
 
     /**
-     * Customers may cancel within their window (until the restaurant
-     * starts preparing); staff may cancel any sub-order the lifecycle
-     * still allows.
+     * Customers may cancel any time before the order is sent out;
+     * staff may cancel any sub-order the lifecycle still allows.
      */
     public function cancel(User $user, RestaurantOrder $restaurantOrder): bool
     {

@@ -2,10 +2,15 @@
 
 namespace App\Models\Lunar;
 
+use App\Models\User;
 use Database\Factories\Lunar\CustomerFactory;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Lunar\Models\Address;
+use Lunar\Models\Cart;
 use Lunar\Models\Customer as LunarCustomer;
+use Lunar\Models\Order;
 
 /**
  * A storefront customer, linked to an app User through customer_user.
@@ -16,13 +21,13 @@ use Lunar\Models\Customer as LunarCustomer;
  * @property string $last_name
  * @property string|null $company_name
  * @property string|null $vat_no
- * @property \Illuminate\Support\Collection<string, mixed>|null $meta
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\User> $users
+ * @property Collection<string, mixed>|null $meta
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, User> $users
  * @property-read \Illuminate\Database\Eloquent\Collection<int, Address> $addresses
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \Lunar\Models\Order> $orders
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \Lunar\Models\Cart> $carts
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, Order> $orders
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, Cart> $carts
  * @property-read Address|null $defaultShippingAddress
  * @property-read Address|null $defaultBillingAddress
  */

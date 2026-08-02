@@ -58,13 +58,20 @@ test('customers can cancel within their window', function (RestaurantOrderStatus
     'pending' => [RestaurantOrderStatus::Pending],
     'payment received' => [RestaurantOrderStatus::PaymentReceived],
     'accepted' => [RestaurantOrderStatus::Accepted],
+    'preparing' => [RestaurantOrderStatus::Preparing],
+    'on hold' => [RestaurantOrderStatus::OnHold],
 ]);
 
-test('customers cannot cancel once the restaurant starts preparing', function () {
-    $subOrder = ($this->makeSubOrder)(RestaurantOrderStatus::Preparing);
+test('customers cannot cancel once the order is sent out or terminal', function (RestaurantOrderStatus $status) {
+    $subOrder = ($this->makeSubOrder)($status);
 
     app(CancelRestaurantOrderAction::class)->handle($this->customer, $subOrder, 'Too late');
-})->throws(AuthorizationException::class);
+})->with([
+    'dispatched' => [RestaurantOrderStatus::Dispatched],
+    'completed' => [RestaurantOrderStatus::Completed],
+    'already cancelled' => [RestaurantOrderStatus::Cancelled],
+    'refunded' => [RestaurantOrderStatus::Refunded],
+])->throws(AuthorizationException::class);
 
 test('staff can cancel any non-dispatched, non-terminal sub-order', function () {
     $subOrder = ($this->makeSubOrder)(RestaurantOrderStatus::Preparing);
