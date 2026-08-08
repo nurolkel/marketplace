@@ -3,19 +3,23 @@
 namespace App\Http\Requests\Checkout;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class UpdateCheckoutAddressRequest extends FormRequest
 {
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, array<int, string>>
+     * @return array<string, array<int, mixed>>
      */
     public function rules(): array
     {
         return [
             'shipping' => ['required', 'array'],
             ...$this->addressRules('shipping', 'required'),
+            // Guests have no account email, so the address must carry
+            // one for receipts and order updates.
+            'shipping.contact_email' => [Rule::requiredIf(fn (): bool => $this->user() === null), 'email', 'max:255'],
             'billing' => ['nullable', 'array'],
             ...$this->addressRules('billing', 'required_with:billing'),
         ];

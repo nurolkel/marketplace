@@ -3,6 +3,7 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Enums\NotificationChannel;
 use App\Enums\RestaurantRole;
 use App\Enums\UserType;
 use App\Models\Lunar\Customer;
@@ -12,6 +13,7 @@ use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
@@ -26,6 +28,8 @@ use Lunar\Base\Traits\LunarUser;
  * @property string $name
  * @property string $email
  * @property UserType $type
+ * @property NotificationChannel $notification_channel
+ * @property string|null $phone
  * @property Carbon|null $email_verified_at
  * @property string $password
  * @property string|null $two_factor_secret
@@ -37,8 +41,9 @@ use Lunar\Base\Traits\LunarUser;
  * @property-read Collection<int, Restaurant> $restaurants
  * @property-read Collection<int, Passkey> $passkeys
  * @property-read Collection<int, Customer> $lunarCustomer
+ * @property-read Collection<int, Review> $reviews
  */
-#[Fillable(['name', 'email', 'password'])]
+#[Fillable(['name', 'email', 'password', 'phone', 'notification_channel'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
 class User extends Authenticatable implements PasskeyUser
 {
@@ -54,6 +59,7 @@ class User extends Authenticatable implements PasskeyUser
     {
         return [
             'type' => UserType::class,
+            'notification_channel' => NotificationChannel::class,
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'two_factor_confirmed_at' => 'datetime',
@@ -133,5 +139,24 @@ class User extends Authenticatable implements PasskeyUser
     public function isCustomer(): bool
     {
         return $this->type === UserType::Customer;
+    }
+
+    /**
+     * Reviews this user has written across the platform: restaurants,
+     * their own sub-orders, and the platform itself.
+     *
+     * @return HasMany<Review, $this>
+     */
+    public function reviews(): HasMany
+    {
+        return $this->hasMany(Review::class);
+    }
+
+    /**
+     * The phone number SMS notifications are delivered to.
+     */
+    public function routeNotificationForSms(): ?string
+    {
+        return $this->phone;
     }
 }

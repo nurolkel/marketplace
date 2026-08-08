@@ -1,9 +1,13 @@
+export type NotificationChannel = 'mail' | 'sms' | 'both';
+
 export type User = {
     id: number;
     name: string;
     email: string;
     avatar?: string;
     email_verified_at: string | null;
+    notification_channel: NotificationChannel;
+    phone: string | null;
     two_factor_enabled?: boolean;
     created_at: string;
     updated_at: string;

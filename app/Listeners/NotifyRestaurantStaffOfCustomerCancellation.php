@@ -11,7 +11,9 @@ class NotifyRestaurantStaffOfCustomerCancellation
 {
     /**
      * Alert the restaurant's staff when the customer cancels their
-     * sub-order, so prep work stops before ingredients are wasted.
+     * sub-order, so prep work stops before ingredients are wasted. A
+     * null actor means a guest cancelled their own order; staff or
+     * admin cancellations stay silent.
      */
     public function handle(RestaurantOrderStatusChanged $event): void
     {
@@ -26,9 +28,7 @@ class NotifyRestaurantStaffOfCustomerCancellation
             return;
         }
 
-        $customer = $restaurantOrder->order->user;
-
-        if (! $customer instanceof User || $event->actor->isNot($customer)) {
+        if ($event->actor !== null && $event->actor->isNot($restaurantOrder->order->user)) {
             return;
         }
 

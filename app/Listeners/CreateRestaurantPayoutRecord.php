@@ -29,7 +29,7 @@ class CreateRestaurantPayoutRecord
 
         $commission = (int) round($subOrder->total * $restaurant->effectiveCommissionRate() / 10000);
 
-        RestaurantPayout::firstOrCreate(
+        $payout = RestaurantPayout::firstOrCreate(
             ['restaurant_order_id' => $subOrder->id],
             [
                 'restaurant_id' => $restaurant->id,
@@ -40,5 +40,12 @@ class CreateRestaurantPayoutRecord
                 'eligible_at' => ($subOrder->completed_at ?? now())->addDays(30),
             ],
         );
+
+        // Count the fulfilled sub-order against the promotion's order
+        // cap. Tied to payout creation so a repeated Completed event
+        // cannot inflate the counter.
+        if ($payout->wasRecentlyCreated) {
+            $restaurant->activeCommissionPromotion()?->increment('orders_used');
+        }
     }
 }

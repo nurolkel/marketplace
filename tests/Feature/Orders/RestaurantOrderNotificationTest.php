@@ -11,10 +11,13 @@ use App\Models\Lunar\Order;
 use App\Models\Restaurant;
 use App\Models\RestaurantOrder;
 use App\Models\User;
+use App\Notifications\Channels\SmsChannel;
 use App\Notifications\RestaurantOrderStatusChangedNotification;
 use Illuminate\Support\Facades\Notification;
+use Lunar\Models\Country;
 use Lunar\Models\Currency;
 use Lunar\Models\Language;
+use Lunar\Models\OrderAddress;
 use Lunar\Models\Transaction;
 
 beforeEach(function () {
@@ -87,14 +90,76 @@ test('the customer is told when their sub-order is dispatched', function () {
     );
 });
 
-test('the customer is not notified about routine fulfilment steps', function () {
-    $subOrder = ($this->makeSubOrder)(RestaurantOrderStatus::PaymentReceived);
+test('the customer is told as their order moves through fulfilment', function (RestaurantOrderStatus $from, RestaurantOrderStatus $to) {
+    $subOrder = ($this->makeSubOrder)($from);
 
     Notification::fake();
 
-    (new TransitionRestaurantOrderAction)->handle($this->staff, $subOrder, RestaurantOrderStatus::Accepted);
+    (new TransitionRestaurantOrderAction)->handle($this->staff, $subOrder, $to);
 
-    Notification::assertNotSentTo($this->customer, RestaurantOrderStatusChangedNotification::class);
+    Notification::assertSentTo(
+        $this->customer,
+        RestaurantOrderStatusChangedNotification::class,
+        fn (RestaurantOrderStatusChangedNotification $notification): bool => $notification->to === $to
+    );
+})->with([
+    'payment received' => [RestaurantOrderStatus::Pending, RestaurantOrderStatus::PaymentReceived],
+    'accepted' => [RestaurantOrderStatus::PaymentReceived, RestaurantOrderStatus::Accepted],
+    'preparing' => [RestaurantOrderStatus::Accepted, RestaurantOrderStatus::Preparing],
+    'completed' => [RestaurantOrderStatus::Dispatched, RestaurantOrderStatus::Completed],
+]);
+
+test('notifications follow the customer channel preference', function (string $preference, ?string $phone, array $expected) {
+    $customer = User::factory()->create([
+        'notification_channel' => $preference,
+        'phone' => $phone,
+    ]);
+
+    $notification = new RestaurantOrderStatusChangedNotification(
+        ($this->makeSubOrder)(RestaurantOrderStatus::Preparing),
+        RestaurantOrderStatus::Preparing,
+        RestaurantOrderStatus::Dispatched,
+    );
+
+    expect($notification->via($customer))->toBe($expected);
+})->with([
+    'mail' => ['mail', null, ['mail', 'database']],
+    'sms with phone' => ['sms', '+15551234567', [SmsChannel::class, 'database']],
+    'sms without phone falls back to mail' => ['sms', null, ['mail', 'database']],
+    'both with phone' => ['both', '+15551234567', ['mail', SmsChannel::class, 'database']],
+    'both without phone falls back to mail' => ['both', null, ['mail', 'database']],
+]);
+
+test('guests get order updates by on-demand mail to their contact email', function () {
+    $country = Country::factory()->create();
+    $order = Order::factory()->create(['user_id' => null]);
+    OrderAddress::create([
+        'order_id' => $order->id,
+        'type' => 'billing',
+        'first_name' => 'Nadia',
+        'last_name' => 'Frost',
+        'line_one' => '12 Icebox Lane',
+        'city' => 'Portland',
+        'postcode' => '97201',
+        'country_id' => $country->id,
+        'contact_email' => 'nadia@example.com',
+    ]);
+
+    $subOrder = RestaurantOrder::factory()->create([
+        'order_id' => $order->id,
+        'restaurant_id' => $this->restaurant->id,
+        'status' => RestaurantOrderStatus::Preparing,
+    ]);
+
+    Notification::fake();
+
+    (new TransitionRestaurantOrderAction)->handle($this->staff, $subOrder, RestaurantOrderStatus::Dispatched);
+
+    Notification::assertSentOnDemand(
+        RestaurantOrderStatusChangedNotification::class,
+        fn (RestaurantOrderStatusChangedNotification $notification, array $channels, object $notifiable): bool => $notifiable->routes['mail'] === 'nadia@example.com'
+            && $notification->to === RestaurantOrderStatus::Dispatched
+    );
 });
 
 test('the customer is told about refunds', function () {

@@ -8,12 +8,14 @@ use App\Models\Lunar\Order;
 use App\Models\Lunar\Product;
 use App\Models\Restaurant;
 use App\Models\RestaurantOrder;
+use App\Models\Review;
 use App\Models\User;
 use App\Policies\CategoryPolicy;
 use App\Policies\CustomerPolicy;
 use App\Policies\ProductPolicy;
 use App\Policies\RestaurantOrderPolicy;
 use App\Policies\RestaurantPolicy;
+use App\Policies\ReviewPolicy;
 use App\Shipping\FlatRateShippingModifier;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Date;
@@ -65,6 +67,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Collection::class, CategoryPolicy::class);
         Gate::policy(Customer::class, CustomerPolicy::class);
         Gate::policy(RestaurantOrder::class, RestaurantOrderPolicy::class);
+        Gate::policy(Review::class, ReviewPolicy::class);
 
         app(ShippingModifiers::class)->add(FlatRateShippingModifier::class);
     }

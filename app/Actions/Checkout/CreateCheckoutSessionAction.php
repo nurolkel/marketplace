@@ -22,9 +22,11 @@ class CreateCheckoutSessionAction
      * is stored in the cart meta so the webhook and the return flow
      * can reconcile the payment afterwards.
      *
+     * @param  string|null  $customerEmail  Prefills Stripe's email field so receipts reach the payer (the guest's contact email or the account email).
+     *
      * @throws ValidationException when the cart has no payable total
      */
-    public function handle(Cart $cart): string
+    public function handle(Cart $cart, ?string $customerEmail = null): string
     {
         $cart = $cart->calculate();
 
@@ -58,6 +60,7 @@ class CreateCheckoutSessionAction
         $session = $this->stripe->checkout->sessions->create([
             'mode' => 'payment',
             'line_items' => $lineItems,
+            'customer_email' => $customerEmail,
             'success_url' => config('services.stripe.checkout.success_url'),
             'cancel_url' => config('services.stripe.checkout.cancel_url'),
         ]);

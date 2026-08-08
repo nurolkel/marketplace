@@ -1,5 +1,6 @@
-import { Form, Head, usePage } from '@inertiajs/react';
+import { Form, Head, useForm, usePage } from '@inertiajs/react';
 import { Link } from '@inertiajs/react';
+import type { FormEvent } from 'react';
 import ProfileController from '@/actions/App/Http/Controllers/Settings/ProfileController';
 import DeleteUser from '@/components/delete-user';
 import Heading from '@/components/heading';
@@ -7,9 +8,17 @@ import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
+import { update } from '@/routes/notifications';
 import { edit } from '@/routes/profile';
 import { send } from '@/routes/verification';
-import type { Auth } from '@/types';
+import type { Auth, NotificationChannel } from '@/types';
 
 type PageProps = {
     auth: Auth;
@@ -23,6 +32,24 @@ export default function Profile({
     status?: string;
 }) {
     const { auth } = usePage<PageProps>().props;
+
+    const notificationsForm = useForm<{
+        notification_channel: NotificationChannel;
+        phone: string;
+    }>({
+        notification_channel: auth.user.notification_channel,
+        phone: auth.user.phone ?? '',
+    });
+
+    const isSmsChannel = notificationsForm.data.notification_channel !== 'mail';
+
+    function submitNotificationPreferences(event: FormEvent) {
+        event.preventDefault();
+
+        notificationsForm.patch(update.url(), {
+            preserveScroll: true,
+        });
+    }
 
     return (
         <>
@@ -121,6 +148,92 @@ export default function Profile({
                         </>
                     )}
                 </Form>
+            </div>
+
+            <div className="space-y-6">
+                <Heading
+                    variant="small"
+                    title="Notification preferences"
+                    description="Choose how we contact you about your orders."
+                />
+
+                <form
+                    onSubmit={submitNotificationPreferences}
+                    className="space-y-6"
+                >
+                    <div className="grid gap-2">
+                        <Label htmlFor="notification_channel">
+                            Notification channel
+                        </Label>
+
+                        <Select
+                            value={notificationsForm.data.notification_channel}
+                            onValueChange={(value) =>
+                                notificationsForm.setData(
+                                    'notification_channel',
+                                    value as NotificationChannel,
+                                )
+                            }
+                        >
+                            <SelectTrigger
+                                id="notification_channel"
+                                className="mt-1 w-full"
+                            >
+                                <SelectValue placeholder="Select a channel" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="mail">Email</SelectItem>
+                                <SelectItem value="sms">SMS</SelectItem>
+                                <SelectItem value="both">
+                                    Email &amp; SMS
+                                </SelectItem>
+                            </SelectContent>
+                        </Select>
+
+                        <InputError
+                            className="mt-2"
+                            message={
+                                notificationsForm.errors.notification_channel
+                            }
+                        />
+                    </div>
+
+                    {isSmsChannel && (
+                        <div className="grid gap-2">
+                            <Label htmlFor="phone">Phone number</Label>
+
+                            <Input
+                                id="phone"
+                                type="tel"
+                                className="mt-1 block w-full"
+                                value={notificationsForm.data.phone}
+                                onChange={(event) =>
+                                    notificationsForm.setData(
+                                        'phone',
+                                        event.target.value,
+                                    )
+                                }
+                                required
+                                autoComplete="tel"
+                                placeholder="Phone number"
+                            />
+
+                            <InputError
+                                className="mt-2"
+                                message={notificationsForm.errors.phone}
+                            />
+                        </div>
+                    )}
+
+                    <div className="flex items-center gap-4">
+                        <Button
+                            disabled={notificationsForm.processing}
+                            data-test="update-notifications-button"
+                        >
+                            Save
+                        </Button>
+                    </div>
+                </form>
             </div>
 
             <DeleteUser />

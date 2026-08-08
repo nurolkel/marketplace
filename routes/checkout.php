@@ -7,7 +7,9 @@ use App\Http\Controllers\Checkout\PlaceOrderController;
 use App\Http\Controllers\Checkout\ShippingOptionController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware(['auth', 'verified'])->prefix('checkout')->name('checkout.')->group(function () {
+// Guests and account holders share the same flow; the session cart
+// scopes what each visitor can touch.
+Route::prefix('checkout')->name('checkout.')->group(function () {
     Route::post('lines', [CartLineController::class, 'store'])->name('lines.store');
     Route::delete('lines/{line}', [CartLineController::class, 'destroy'])->name('lines.destroy');
     Route::put('addresses', CheckoutAddressController::class)->name('addresses.update');

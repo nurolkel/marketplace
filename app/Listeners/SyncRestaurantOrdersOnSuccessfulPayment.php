@@ -41,11 +41,11 @@ class SyncRestaurantOrdersOnSuccessfulPayment
                     'placed_at' => $subOrder->placed_at ?? now(),
                 ]);
 
-                if ($order->user !== null) {
-                    RestaurantOrderStatusChanged::dispatch(
-                        $subOrder->refresh(), $order->user, $from, RestaurantOrderStatus::PaymentReceived,
-                    );
-                }
+                // Guest orders have no user; a null actor still notifies
+                // the guest by on-demand mail via the customer listener.
+                RestaurantOrderStatusChanged::dispatch(
+                    $subOrder->refresh(), $order->user, $from, RestaurantOrderStatus::PaymentReceived,
+                );
             });
     }
 }

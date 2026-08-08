@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphOne;
 use Illuminate\Support\Carbon;
 use Lunar\Models\OrderLine;
 
@@ -44,6 +45,7 @@ use Lunar\Models\OrderLine;
  * @property-read Restaurant|null $restaurant
  * @property-read User|null $cancelledBy
  * @property-read Collection<int, OrderLine> $lines
+ * @property-read Review|null $review
  */
 #[Fillable([
     'order_id',
@@ -140,6 +142,16 @@ class RestaurantOrder extends Model
     public function cancelledBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'cancelled_by_id');
+    }
+
+    /**
+     * The customer's review of this sub-order, if they left one.
+     *
+     * @return MorphOne<Review, $this>
+     */
+    public function review(): MorphOne
+    {
+        return $this->morphOne(Review::class, 'reviewable');
     }
 
     /**

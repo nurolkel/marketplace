@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\RestaurantOrderStatus;
+use App\Models\Lunar\Customer;
 use App\Models\Lunar\Order;
 use App\Models\Lunar\Product;
 use App\Models\Restaurant;
@@ -106,9 +107,36 @@ test('a line can be added to the cart', function () {
         ->assertJsonPath('lines', 1);
 });
 
-test('checkout endpoints require authentication', function () {
-    $this->postJson(route('checkout.lines.store'), linePayload(ProductVariant::factory()->create()))
-        ->assertUnauthorized();
+test('guests can add lines to the cart', function () {
+    $variant = makePricedVariant(Restaurant::factory()->create(), 'Lobster Ravioli', 2500);
+
+    $this->postJson(route('checkout.lines.store'), linePayload($variant, 2))
+        ->assertCreated()
+        ->assertJsonPath('total', 5000)
+        ->assertJsonPath('lines', 1);
+});
+
+test('guests must leave a contact email with their address', function () {
+    $variant = makePricedVariant(Restaurant::factory()->create(), 'Margherita Pizza', 1800);
+    $this->postJson(route('checkout.lines.store'), linePayload($variant));
+
+    $payload = addressPayload();
+    unset($payload['shipping']['contact_email']);
+
+    $this->putJson(route('checkout.addresses.update'), $payload)
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['shipping.contact_email']);
+});
+
+test('account holders may skip the address contact email', function () {
+    $variant = makePricedVariant(Restaurant::factory()->create(), 'Margherita Pizza', 1800);
+    $this->actingAs($this->user)->postJson(route('checkout.lines.store'), linePayload($variant));
+
+    $payload = addressPayload();
+    unset($payload['shipping']['contact_email']);
+
+    $this->actingAs($this->user)->putJson(route('checkout.addresses.update'), $payload)
+        ->assertOk();
 });
 
 test('lines are validated', function () {
@@ -160,6 +188,7 @@ test('a stripe checkout session is created from the cart', function () {
 
     $payload = $this->fakeStripe->checkout->sessions->createdWith[0];
     expect($payload['mode'])->toBe('payment')
+        ->and($payload['customer_email'])->toBe($this->user->email)
         ->and($payload['line_items'][0]['quantity'])->toBe(2)
         ->and($payload['line_items'][0]['price_data']['unit_amount'])->toBe(2500)
         ->and($payload['line_items'][0]['price_data']['currency'])->toBe('USD');
@@ -204,6 +233,52 @@ test('placing the order splits it per restaurant and marks sub-orders paid', fun
         ))->toBeTrue();
 
     expect(CartSession::current())->toBeNull();
+});
+
+test('a guest can complete the full checkout flow', function () {
+    $restaurant = Restaurant::factory()->create();
+    $variant = makePricedVariant($restaurant, 'Lobster Ravioli', 2500);
+
+    $this->postJson(route('checkout.lines.store'), linePayload($variant, 2));
+    $this->putJson(route('checkout.addresses.update'), addressPayload());
+    $this->putJson(route('checkout.shipping-option.update'), ['identifier' => 'standard']);
+    $this->postJson(route('checkout.session.store'));
+
+    expect($this->fakeStripe->checkout->sessions->createdWith[0]['customer_email'])
+        ->toBe('nadia@example.com');
+
+    $response = $this->postJson(route('checkout.place-order.store'), ['session_id' => 'cs_test_123']);
+
+    $response->assertCreated()->assertJsonStructure(['order_id', 'reference']);
+
+    $order = Order::findOrFail($response->json('order_id'));
+    expect($order->user_id)->toBeNull()
+        ->and($order->customer_id)->not->toBeNull()
+        ->and($order->customer->meta['email'])->toBe('nadia@example.com')
+        ->and($order->customer->fullName())->toBe('Nadia Frost');
+
+    expect(RestaurantOrder::where('order_id', $order->id)->where('restaurant_id', $restaurant->id)->exists())
+        ->toBeTrue();
+});
+
+test('a returning guest reuses their customer record', function () {
+    $variant = makePricedVariant(Restaurant::factory()->create(), 'Lobster Ravioli', 2500);
+
+    $this->postJson(route('checkout.lines.store'), linePayload($variant))->assertCreated();
+    $this->putJson(route('checkout.addresses.update'), addressPayload())->assertOk();
+    $this->putJson(route('checkout.shipping-option.update'), ['identifier' => 'standard'])->assertOk();
+    $this->postJson(route('checkout.session.store'))->assertCreated();
+    $this->postJson(route('checkout.place-order.store'), ['session_id' => 'cs_test_123'])->assertCreated();
+
+    $this->postJson(route('checkout.lines.store'), linePayload($variant))->assertCreated();
+    $this->putJson(route('checkout.addresses.update'), addressPayload())->assertOk();
+    $this->putJson(route('checkout.shipping-option.update'), ['identifier' => 'standard'])->assertOk();
+    $this->postJson(route('checkout.session.store'))->assertCreated();
+    $this->postJson(route('checkout.place-order.store'), ['session_id' => 'cs_test_123'])->assertCreated();
+
+    expect(Customer::query()->where('meta->email', 'nadia@example.com')->count())->toBe(1)
+        ->and(Order::count())->toBe(2)
+        ->and(Order::pluck('customer_id')->unique())->toHaveCount(1);
 });
 
 test('a declined payment places no order', function () {

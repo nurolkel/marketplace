@@ -8,6 +8,8 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Lunar\Models\Cart;
+use Lunar\Models\CartAddress;
 
 class CheckoutSessionController extends Controller
 {
@@ -20,11 +22,24 @@ class CheckoutSessionController extends Controller
     {
         /** @var User|null $user */
         $user = $request->user();
+        $cart = $this->getOrCreateCart->handle($user);
 
         $url = $this->createCheckoutSession->handle(
-            $this->getOrCreateCart->handle($user)
+            $cart,
+            $user instanceof User ? $user->email : $this->contactEmail($cart),
         );
 
         return response()->json(['url' => $url], 201);
+    }
+
+    /**
+     * The guest's contact email from the cart addresses, if the
+     * address step has run.
+     */
+    private function contactEmail(Cart $cart): ?string
+    {
+        $address = $cart->shippingAddress ?? $cart->billingAddress;
+
+        return $address instanceof CartAddress ? $address->contact_email : null;
     }
 }

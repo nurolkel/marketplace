@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 use Laravel\Scout\Searchable;
@@ -36,6 +37,8 @@ use Laravel\Scout\Searchable;
  * @property-read Collection<int, Category> $categories
  * @property-read Collection<int, RestaurantOrder> $restaurantOrders
  * @property-read Collection<int, RestaurantPayout> $payouts
+ * @property-read Collection<int, CommissionPromotion> $commissionPromotions
+ * @property-read Collection<int, Review> $reviews
  */
 #[Fillable(['name', 'slug', 'description', 'status'])]
 class Restaurant extends Model
@@ -161,6 +164,27 @@ class Restaurant extends Model
     }
 
     /**
+     * Customer reviews of this restaurant.
+     *
+     * @return MorphMany<Review, $this>
+     */
+    public function reviews(): MorphMany
+    {
+        return $this->morphMany(Review::class, 'reviewable');
+    }
+
+    /**
+     * The restaurant's average review rating, or null when it has no
+     * reviews yet.
+     */
+    public function averageRating(): ?float
+    {
+        $average = $this->reviews()->avg('rating');
+
+        return $average === null ? null : round((float) $average, 1);
+    }
+
+    /**
      * The restaurant's rung on the commission scale. Null means the
      * platform's default tier applies.
      *
@@ -172,13 +196,53 @@ class Restaurant extends Model
     }
 
     /**
+     * Commission promotions assigned to this restaurant, with their
+     * schedules and fulfilled-order counters on the pivot.
+     *
+     * @return BelongsToMany<CommissionPromotion, $this, RestaurantCommissionPromotion, 'pivot'>
+     */
+    public function commissionPromotions(): BelongsToMany
+    {
+        return $this->belongsToMany(CommissionPromotion::class, 'restaurant_commission_promotion')
+            ->using(RestaurantCommissionPromotion::class)
+            ->withPivot(['id', 'starts_at', 'ends_at', 'orders_used'])
+            ->withTimestamps();
+    }
+
+    /**
+     * The assigned promotion currently in effect, if any: switched
+     * on, inside its schedule, and under its order cap. Assignments
+     * are replaced rather than stacked, so at most one applies.
+     */
+    public function activeCommissionPromotion(): ?RestaurantCommissionPromotion
+    {
+        /** @var CommissionPromotion|null $promotion */
+        $promotion = $this->commissionPromotions()->first();
+
+        if ($promotion === null) {
+            return null;
+        }
+
+        /** @var RestaurantCommissionPromotion $assignment */
+        $assignment = $promotion->pivot;
+
+        return $assignment->isInEffect() ? $assignment : null;
+    }
+
+    /**
      * The commission charged on this restaurant's fulfilled
-     * sub-orders, in basis points: a custom override when set,
-     * otherwise the rate of the restaurant's tier (the platform
-     * standard by default).
+     * sub-orders, in basis points: an in-effect promotion first,
+     * then a custom override, otherwise the rate of the restaurant's
+     * tier (the platform standard by default).
      */
     public function effectiveCommissionRate(): int
     {
+        $promotion = $this->activeCommissionPromotion();
+
+        if ($promotion instanceof RestaurantCommissionPromotion) {
+            return $promotion->promotion->rate;
+        }
+
         if ($this->commission_rate !== null) {
             return $this->commission_rate;
         }
